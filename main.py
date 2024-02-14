@@ -24,7 +24,7 @@ def get_leaders():
     return leaders_per_country
 
 
-wiki_request = requests.get(get_leaders()['us'][0]['wikipedia_url'])
+wiki_request = requests.get(get_leaders()['be'][5]['wikipedia_url'])
 print(f'Statuscode: {wiki_request.status_code}')
 content = wiki_request.content
 soup = BeautifulSoup(content, 'html.parser')
@@ -32,5 +32,23 @@ soup = BeautifulSoup(content, 'html.parser')
 # solution below by gpt:
 # print(soup.get_text().encode('utf-8', errors='replace'))
 
-pretty_html = soup.prettify()
-print(pretty_html) -> neen, weer coding error
+# Storing the HTML structure in a HTML file, accounting for encoding error
+pretty_html = soup.prettify()  # -> used for debugging and stuff
+with open('pretty_html_output.html', 'w', encoding='utf-8') as file:
+    file.write(pretty_html)
+
+# Storing the paragaphs in a txt file, accounting for encoding error
+paragraphs = soup.find_all('p')  # -> storing all paragraphs in a variable
+with open('paragraphs.txt', 'w', encoding='utf-8') as file:
+    for paragr in paragraphs:
+        file.write(paragr.text)
+
+# Printing each paragraph text -> won't work due to terminal not handling the encoding
+# for p in paragraphs:
+#     print(p.text)
+
+# Calling specific paragraph text, accounting for unicodeencodeerror requires writing it in a file
+# I think terminal can't handle it
+with open('first_paragraph.txt', 'w', encoding='utf-8') as file:
+    file.write(paragraphs[1].text)
+
