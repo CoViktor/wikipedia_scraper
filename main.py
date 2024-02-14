@@ -1,3 +1,6 @@
+import os
+import re
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -9,7 +12,6 @@ def get_leaders():
     countries_url = '/countries'
     leaders_url = '/leaders'
     cookies_req = requests.get(f'{root_url}{cookies_url}')
-    print(cookies_req.status_code)
     cookies = cookies_req.cookies
     countries = requests.get(f'{root_url}{countries_url}', cookies=cookies)
     leaders_per_country = {}
@@ -23,32 +25,59 @@ def get_leaders():
         leaders_per_country[country] = leader_list
     return leaders_per_country
 
+#get leaders return structure: {country: [{person1dict}, {person2dict}]}
+# Storing the structure in a variable: -> my mistake of not doing this made me call the function a ton
+# of times in the for loop
+leaders_data = get_leaders()
 
-wiki_request = requests.get(get_leaders()['be'][5]['wikipedia_url'])
-print(f'Statuscode: {wiki_request.status_code}')
-content = wiki_request.content
-soup = BeautifulSoup(content, 'html.parser')
-# print(soup.get_text())  => bouncing on error due to unknown characters.. 
-# solution below by gpt:
-# print(soup.get_text().encode('utf-8', errors='replace'))
+# Open file in append mode
+# But first checking if an existing file should be removed
+if os.path.exists('first_paragraph.txt'):
+    os.remove('first_paragraph.txt')
+with open('first_paragraph.txt', 'a', encoding='utf-8') as file:
 
+# Looping over countries:
+    for country in leaders_data:
+        print(f'\nWorking on {country} leaders...')
+        file.write(f'\nThe leaders of {country}:\n')
+        # Looping over leaders -> my issue: not using the leaders_data indexing and overcomplicating everything
+        for leader in leaders_data[country]:
+            name = f"{leader['first_name']} {leader['last_name']}"
+            # getting wiki content, but switching to english wiki using regex
+            url = requests.get(leader['wikipedia_url'])
+            # storing wiki content
+            content = url.content
+            soup = BeautifulSoup(content, 'html.parser')
+            # looking for paragraphs
+            paragraphs = soup.find_all('p')
+            for idx, p in enumerate(paragraphs):
+                if len(p) > 10:
+                    file.write(f"{name}: {leader['wikipedia_url']}{url.status_code}\n{paragraphs[idx].text}\n")
+                    break
+
+#next up= STORE IN VAR INSTEAD OF WRITING IN TXT -> SKIP THE TXT PART
+
+print(f'Finished')
+
+
+# next priorities: 
+# loop 
+
+
+# handle different languages for output:
+# maybe don't do language changing in main loop, cause info might be way shorter
+# find english wiki for everybody -> trying a bit
+# make function with leader and countryname as input, that gets paragraph
+            # en_wiki_url = re.sub("//[\w].", "//en",  leader['wikipedia_url'])
+            # wiki_request = requests.get(en_wiki_url)
+            # if wiki_request.status_code != 200:
+            #     print(f'{wiki_request.status_code} {name} wiki not available in English, switching to original...')
+            #     wiki_request = requests.get(leader['wikipedia_url'])
+
+# ------------Debugging tools--------------------------------------------------------
+        # HTML STRUCTURE
 # Storing the HTML structure in a HTML file, accounting for encoding error
-pretty_html = soup.prettify()  # -> used for debugging and stuff
-with open('pretty_html_output.html', 'w', encoding='utf-8') as file:
-    file.write(pretty_html)
-
-# Storing the paragaphs in a txt file, accounting for encoding error
-paragraphs = soup.find_all('p')  # -> storing all paragraphs in a variable
-with open('paragraphs.txt', 'w', encoding='utf-8') as file:
-    for paragr in paragraphs:
-        file.write(paragr.text)
-
-# Printing each paragraph text -> won't work due to terminal not handling the encoding
-# for p in paragraphs:
-#     print(p.text)
-
-# Calling specific paragraph text, accounting for unicodeencodeerror requires writing it in a file
-# I think terminal can't handle it
-with open('first_paragraph.txt', 'w', encoding='utf-8') as file:
-    file.write(paragraphs[1].text)
-
+# pretty_html = soup.prettify()  # -> used for debugging and stuff & finding paragraphs
+# with open('pretty_html_output.html', 'w', encoding='utf-8') as file:
+#     file.write(pretty_html)
+# ------------------------------------------------------------------------------------
