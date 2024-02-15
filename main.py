@@ -25,37 +25,50 @@ def get_leaders():
         leaders_per_country[country] = leader_list
     return leaders_per_country
 
+def get_first_paragraph(wikipedia_url) -> str:
+    '''Returns first true paragraph of a wiki page as text.
+    param: requires wikipedia url'''
+    url = requests.get(wikipedia_url)
+    content = url.content
+    soup = BeautifulSoup(content, 'html.parser')
+    # looking for paragraphs
+    paragraphs = soup.find_all('p')
+    for idx, p in enumerate(paragraphs):
+        if len(p) > 10:
+            first_paragraph = paragraphs[idx].text  # could be shorter: just return this
+            # Cleaning the phonetics (start with / and finish with ;):
+            clean_paragraph = re.sub(r'\[.*?\]', "", first_paragraph)
+            # Cleaning references (between [])
+            clean_paragraph = re.sub(r'\(/.*?;\)', "",  clean_paragraph)
+            # Together would be re.sub(r'\[.*?\]|\(/.*?;\)', "", first_paragraph)
+            break
+    return clean_paragraph
+
+
 #get leaders return structure: {country: [{person1dict}, {person2dict}]}
 # Storing the structure in a variable: -> my mistake of not doing this made me call the function a ton
 # of times in the for loop
 leaders_data = get_leaders()
 
-# Open file in append mode
+# Open file in append mode for debugging
 # But first checking if an existing file should be removed
 if os.path.exists('first_paragraph.txt'):
     os.remove('first_paragraph.txt')
 with open('first_paragraph.txt', 'a', encoding='utf-8') as file:
 
-# Looping over countries:
+
+    # Looping over countries:
     for country in leaders_data:
         print(f'\nWorking on {country} leaders...')
-        file.write(f'\nThe leaders of {country}:\n')
-        # Looping over leaders -> my issue: not using the leaders_data indexing and overcomplicating everything
+        file.write(f'\nThe leaders of {country}:\n')    # DB
+        # Looping over leaders
         for leader in leaders_data[country]:
             name = f"{leader['first_name']} {leader['last_name']}"
-            # getting wiki content, but switching to english wiki using regex
-            url = requests.get(leader['wikipedia_url'])
+            wiki_url = leader['wikipedia_url']
+            first_paragraph = get_first_paragraph(wiki_url)
+            file.write(f"{name}: {wiki_url}\n{first_paragraph}\n")  # DB
             # storing wiki content
-            content = url.content
-            soup = BeautifulSoup(content, 'html.parser')
-            # looking for paragraphs
-            paragraphs = soup.find_all('p')
-            for idx, p in enumerate(paragraphs):
-                if len(p) > 10:
-                    file.write(f"{name}: {leader['wikipedia_url']}{url.status_code}\n{paragraphs[idx].text}\n")
-                    break
 
-#next up= STORE IN VAR INSTEAD OF WRITING IN TXT -> SKIP THE TXT PART
 
 print(f'Finished')
 
@@ -80,4 +93,11 @@ print(f'Finished')
 # pretty_html = soup.prettify()  # -> used for debugging and stuff & finding paragraphs
 # with open('pretty_html_output.html', 'w', encoding='utf-8') as file:
 #     file.write(pretty_html)
+
+# Open file in append mode for debugging
+# But first checking if an existing file should be removed
+# if os.path.exists('first_paragraph.txt'):
+#     os.remove('first_paragraph.txt')
+# with open('first_paragraph.txt', 'a', encoding='utf-8') as file:
+# file.write(f"{name}: {leader['wikipedia_url']}{url.status_code}\n{paragraphs[idx].text}\n")
 # ------------------------------------------------------------------------------------
