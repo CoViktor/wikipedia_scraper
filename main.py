@@ -1,50 +1,28 @@
 import os
 import re
+import json
 
-import requests
+import requests  # -> request.Session is in here
 from bs4 import BeautifulSoup
 
 # Suggestion by gpt4 instead of writing this twice in my code
-def update_cookie_check(root_url, url, params=None, cookies=None):
-    response = requests.get(url, params=params, cookies=cookies)
+def update_cookie_check(root_url, url, session, params=None): 
+    # asks root to make root/cookie, and normal to implement on any total url str 
+    # + session to import existing session from where it is called
+    response = session.get(url, params=params)
     if response.status_code != 200:
         print(f'Status code: {response.status_code}... Refreshing cookies.')
-        cookies_req = requests.get(f'{root_url}/cookie')
+        cookies_req = session.get(f'{root_url}/cookie')
         new_cookies = cookies_req.cookies
-        response = requests.get(url, params=params, cookies=new_cookies)
+        response = session.get(url, params=params, cookies=new_cookies)
     return response
 
-def get_leaders():
-    '''Get the leaders of the countries on 
-    https://country-leaders.onrender.com, and store in dict'''
-    root_url = 'https://country-leaders.onrender.com'
-    cookies_url = '/cookie'
-    countries_url = '/countries'
-    leaders_url = '/leaders'
-    cookies_req = requests.get(f'{root_url}{cookies_url}')
-    cookies = cookies_req.cookies
-    countries = requests.get(f'{root_url}{countries_url}', cookies=cookies)
-    leaders_per_country = {}
-    for country in countries.json():
-        print("Working on " , country, "... status code: ", countries.status_code)
-        params = {'country': country}
-        leaders = update_cookie_check(root_url, f'{root_url}{leaders_url}', params=params, cookies=cookies)
-        # Detecting status code Error
-        leader_dict = {}
-        for person in leaders.json():
-            # Defining key 'name' and value 'wiki_url' for leader_list dict:
-            name = f"{person.get('first_name')} {person.get('last_name')}"
-            # Issue here: MA names: 3 guys become Mohammed None? & get lost in the code -> catch with if/else
-            wiki_url = person.get('wikipedia_url')
-            leader_dict[name] = get_first_paragraph(wiki_url)
-        leaders_per_country[country] = leader_dict
-    return leaders_per_country
-
-def get_first_paragraph(wikipedia_url) -> str:
+def get_first_paragraph(wikipedia_url, session) -> str:
     '''Returns first true paragraph of a wiki page as text.
-    param: requires wikipedia url'''
-    url = requests.get(wikipedia_url)
-    content = url.content
+    param wikipedia_url: requires wikipedia url
+    param session: takes session as param to import the existing session from where the function is called'''
+    response= session.get(wikipedia_url)
+    content = response.content
     soup = BeautifulSoup(content, 'html.parser')
     # looking for paragraphs
     paragraphs = soup.find_all('p')
@@ -62,24 +40,57 @@ def get_first_paragraph(wikipedia_url) -> str:
             break
     return clean_paragraph
 
+def get_leaders():
+    '''Get the leaders of the countries on 
+    https://country-leaders.onrender.com, and store in dict'''
+    root_url = 'https://country-leaders.onrender.com'
+    session = requests.Session()  # Calling initial session object for persistent connection
+    # Cookies: (can be done with cookies = session.get(f'{root_url}/cookie').cookies for short)
+    cookies_url = '/cookie'
+    cookies_req = session.get(f'{root_url}{cookies_url}')
+    cookies = cookies_req.cookies
+    # Countries: 
+    countries_url = '/countries'
+    countries = update_cookie_check(root_url, f'{root_url}{countries_url}', session)
+    # Leaders:
+    leaders_url = '/leaders'
+    leaders_per_country = {}
+    for country in countries.json():  # Not calling it as countries.json() anymore?
+        print("Working on ", country, "... status code: ", countries.status_code)
+        params = {'country': country}  # -> could be put in line below instead of params = params for shorter code
+        leaders = update_cookie_check(root_url, f'{root_url}{leaders_url}', session, params=params)
+        # Detecting status code Error
+        leader_dict = {}
+        for person in leaders.json():
+            # Defining key 'name' and value 'wiki_url' for leader_list dict:
+            name = f"{person.get('first_name')} {person.get('last_name')}"
+            # Issue here: MA names: 3 guys become Mohammed None? & get lost in the code -> catch with if/else
+            wiki_url = person.get('wikipedia_url')
+            leader_dict[name] = get_first_paragraph(wiki_url, session)
+        leaders_per_country[country] = leader_dict
+    return leaders_per_country
 
-#get leaders return structure: {country: [{person1dict}, {person2dict}]}
-# Storing the structure in a variable: -> my mistake of not doing this made me call the function a ton
-# of times in the for loop
+def save(data):
+    with open('data.json', 'w', encoding='utf-8') as output:
+        json.dump(data, output)
 
+# get leaders return structure: {country: [{person1dict}, {person2dict}]}
 leaders_data = get_leaders()
-print(f'data type leaders_data: {type(leaders_data)}')
-# print(leaders_data) -> terminal can't handle characters
+
+save(leaders_data)
+
+# with open('leaders.json') as input:
+#     original_dict = json.load(input)
 
 # Open file in append mode for debugging
 # But first checking if an existing file should be removed
-if os.path.exists('first_paragraph.txt'):
-    os.remove('first_paragraph.txt')
-with open('first_paragraph.txt', 'a', encoding='utf-8') as file:   # DB
-    for country, leaders in leaders_data.items():
-        file.write(f'The leaders of {country} are:\n') 
-        for leader_name, leader_info in leaders.items():
-            file.write(f'{leader_name} : {leader_info}')      
+# if os.path.exists('first_paragraph.txt'):
+#     os.remove('first_paragraph.txt')
+# with open('first_paragraph.txt', 'a', encoding='utf-8') as file:   # DB
+#     for country, leaders in leaders_data.items():  # -> this is how to access a dict in a dict: cal the first dict as a dict instead of just as an object
+#         file.write(f'The leaders of {country} are:\n') 
+#         json.dump(leaders, file, indent=4)  # -> json doens't take encoding from with open call...
+#         file.write('\n\n')
 
 print(f'Finished')
 
