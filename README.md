@@ -74,8 +74,7 @@ class WikipediaScraper:
 This project was finished over the timespan of 3 days.
 
 ## 📌 Personal Situation
-[insert maybe a bit more explanation abt current situation]
-This project was done as part of the AI Boocamp at [BeCode.org](https://becode.org/). 
+This project was done as part of the AI Boocamp at [BeCode.org](https://becode.org/), where trainees are challenged to constantly grow their developer skillset in creative ways, through both individual projects and teamwork.
 
 Connect with me on [LinkedIn](https://www.linkedin.com/in/viktor-cosaert/).
 
