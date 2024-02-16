@@ -88,14 +88,3 @@ class WikipediaScraper:
                 all_countries_leaders[country] = self.get_leaders(country)
         with open(filepath, 'w', encoding='utf-8') as output:
             json.dump(all_countries_leaders, output, ensure_ascii=False, indent=4)
-
-
-        #Next: + -> fix nice output structure
-# Must have:
-    #  Make main
-    #  Requirements file -> see pipreqs vid or do pip freeze
-    #  Nice readme 
-    #  Do type hinting + the __str__ thing
-    #  Fix encoding issues with things like utf-8
-
-#####################################TESTING###############################################
